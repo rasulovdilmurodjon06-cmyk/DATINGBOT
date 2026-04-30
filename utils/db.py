@@ -25,14 +25,25 @@ class Database:
         await self.users.update_one({'user_id': user_id}, {'$set': kwargs})
 
     async def get_user(self, user_id):
-        # Foydalanuvchini ID orqali topish
         return await self.users.find_one({'user_id': user_id})
 
-    async def get_random_users(self, gender, limit=10):
-        # Tasodifiy foydalanuvchilarni topish
-        cursor = self.users.find({'gender': gender})
-        users = await cursor.to_list(length=100)
-        if not users:
-            return []
-        return random.sample(users, min(len(users), limit))
+    async def get_random_users(self, gender, limit=20):
+        cursor = self.users.aggregate([
+            {'$match': {'gender': gender}},
+            {'$sample': {'size': limit}}
+        ])
+        return await cursor.to_list(length=limit)
+
+    async def add_fake_user(self, full_name, age, gender, region, city, photo):
+        await self.users.insert_one({
+            'user_id': random.randint(1000, 9999),
+            'full_name': full_name,
+            'age': age,
+            'gender': gender,
+            'region': region,
+            'city': city,
+            'photo': photo,
+            'is_fake': 1,
+            'created_at': datetime.now()
+        })
         
