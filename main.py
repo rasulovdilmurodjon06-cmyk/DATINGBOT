@@ -26,78 +26,63 @@ PREMIUM_MARK = "⭐️"
 TEXTS = {
     "uz": {
         "welcome": "Xush kelibsiz!",
-        "main_menu": "Asosiy menyu",
+        "stats": "Botda: 🧒 {boys} yigit va 🧕 {girls} qiz bor",
         "search": "Qidiruv 🔍",
         "profile": "Profilim 👤",
         "settings": "Sozlamalar ⚙️",
-        "edit_profile": "Profilni tahrirlash 📝",
         "back": "Orqaga ⬅️",
         "find_boy": "Yigit topish 🧒",
         "find_girl": "Qiz topish 🧕",
         "next": "Keyingisi ⏭",
         "send_msg": "Xabar yuborish ✉️",
-        "end_chat": "Suhbatni yakunlash ❌",
+        "edit_profile": "Profilni tahrirlash 📝",
         "enter_name": "Ismingizni kiriting:",
         "enter_age": "Yoshingizni kiriting:",
         "select_gender": "Jinsingizni tanlang:",
         "select_region": "Viloyatingizni tanlang:",
         "send_photo": "Profilingiz uchun rasm yuboring:",
-        "reg_done": "Ro'yxatdan o'tish yakunlandi!",
         "no_one": "Hozircha hech kim topilmadi.",
-        "msg_sent": "Xabaringiz yetkazildi! ✅",
-        "reply": "Javob berish ✍️",
-        "chat_started": "bilan suhbat boshlandi. Xabaringizni yozing:",
-        "link_forbidden": "Link yuborish taqiqlangan! 🚫"
+        "reply": "Javob berish ✍️"
     },
     "ru": {
         "welcome": "Добро пожаловать!",
-        "main_menu": "Главное меню",
+        "stats": "В боте: 🧒 {boys} парней и 🧕 {girls} девушек",
         "search": "Поиск 🔍",
         "profile": "Мой профиль 👤",
         "settings": "Настройки ⚙️",
-        "edit_profile": "Редактировать профиль 📝",
         "back": "Назад ⬅️",
         "find_boy": "Найти парня 🧒",
         "find_girl": "Найти девушку 🧕",
         "next": "Следующий ⏭",
         "send_msg": "Отправить сообщение ✉️",
-        "end_chat": "Завершить чат ❌",
+        "edit_profile": "Редактировать профиль 📝",
         "enter_name": "Введите ваше имя:",
         "enter_age": "Введите ваш возраст:",
         "select_gender": "Выберите ваш пол:",
         "select_region": "Выберите ваш регион:",
         "send_photo": "Отправьте фото для профиля:",
-        "reg_done": "Регистрация завершена!",
         "no_one": "Пока никого не найдено.",
-        "msg_sent": "Ваше сообщение доставлено! ✅",
-        "reply": "Ответить ✍️",
-        "chat_started": "чат начат. Введите ваше сообщение:",
-        "link_forbidden": "Отправка ссылок запрещена! 🚫"
+        "reply": "Ответить ✍️"
     },
     "en": {
         "welcome": "Welcome!",
-        "main_menu": "Main menu",
+        "stats": "In bot: 🧒 {boys} boys and 🧕 {girls} girls",
         "search": "Search 🔍",
         "profile": "My profile 👤",
         "settings": "Settings ⚙️",
-        "edit_profile": "Edit profile 📝",
         "back": "Back ⬅️",
         "find_boy": "Find a boy 🧒",
         "find_girl": "Find a girl 🧕",
         "next": "Next ⏭",
         "send_msg": "Send message ✉️",
-        "end_chat": "End chat ❌",
+        "edit_profile": "Edit profile 📝",
         "enter_name": "Enter your name:",
         "enter_age": "Enter your age:",
         "select_gender": "Select your gender:",
         "select_region": "Select your region:",
         "send_photo": "Send a photo for your profile:",
-        "reg_done": "Registration completed!",
         "no_one": "No one found yet.",
-        "msg_sent": "Your message has been delivered! ✅",
-        "reply": "Reply ✍️",
-        "chat_started": "chat started. Enter your message:",
-        "link_forbidden": "Sending links is forbidden! 🚫"
+        "reply": "Reply ✍️"
     }
 }
 
@@ -132,21 +117,29 @@ def get_profile_kb(lang):
     kb = [[types.KeyboardButton(text=t["edit_profile"])], [types.KeyboardButton(text=t["back"])]]
     return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
+def get_edit_fields_kb(lang):
+    t = TEXTS[lang]
+    kb = [[types.KeyboardButton(text="Ism/Имя/Name"), types.KeyboardButton(text="Yosh/Возраст/Age")],
+          [types.KeyboardButton(text="Viloyat/Регион/Region"), types.KeyboardButton(text="Rasm/Фото/Photo")],
+          [types.KeyboardButton(text="Jins/Пол/Gender"), types.KeyboardButton(text="Til/Язык/Language")],
+          [types.KeyboardButton(text=t["back"])]]
+    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+def get_regions_kb(lang):
+    buttons = [types.KeyboardButton(text=r) for r in config.REGIONS]
+    kb = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
+    kb.append([types.KeyboardButton(text=TEXTS[lang]["back"])])
+    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+def get_gender_kb():
+    kb = [[types.KeyboardButton(text="Yigit 🧒 / Парень"), types.KeyboardButton(text="Qiz 🧕 / Девушка")]]
+    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
 def get_chat_kb(lang):
     t = TEXTS[lang]
     kb = [[types.KeyboardButton(text=t["send_msg"]), types.KeyboardButton(text=t["next"])],
           [types.KeyboardButton(text=t["back"])]]
     return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
-def get_active_chat_kb(lang):
-    t = TEXTS[lang]
-    kb = [[types.KeyboardButton(text=t["end_chat"])]]
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-
-def get_reply_button(target_id, lang):
-    builder = InlineKeyboardBuilder()
-    builder.button(text=TEXTS[lang]["reply"], callback_data=f"reply_{target_id}")
-    return builder.as_markup()
 
 # --- Handlerlar ---
 @dp.message(Command("start"))
@@ -157,7 +150,10 @@ async def cmd_start(message: types.Message, state: FSMContext):
         await state.set_state(Registration.language)
     else:
         lang = user.get('lang', 'uz')
-        await message.answer(f"{TEXTS[lang]['welcome']}, {user.get('full_name')} {PREMIUM_MARK}!", reply_markup=get_main_menu(lang))
+        boys = await db.users.count_documents({'gender': 'male'})
+        girls = await db.users.count_documents({'gender': 'female'})
+        stats = TEXTS[lang]["stats"].format(boys=boys, girls=girls)
+        await message.answer(f"{TEXTS[lang]['welcome']} {PREMIUM_MARK}\n\n{stats}", reply_markup=get_main_menu(lang))
 
 @dp.message(Registration.language)
 async def set_lang(message: types.Message, state: FSMContext):
@@ -175,17 +171,96 @@ async def set_name(message: types.Message, state: FSMContext):
     await message.answer(TEXTS[lang]["enter_age"])
     await state.set_state(Registration.age)
 
-# ... (Qolgan handlerlar ham shunday TEXTS[lang] orqali yangilanadi) ...
-# To'liq kodni GitHub-ga yuklang.
+@dp.message(Registration.age)
+async def set_age(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('lang', 'uz')
+    if not message.text.isdigit(): return await message.answer(TEXTS[lang]["enter_age"])
+    await db.update_user(message.from_user.id, age=int(message.text))
+    await message.answer(TEXTS[lang]["select_gender"], reply_markup=get_gender_kb())
+    await state.set_state(Registration.gender)
 
+@dp.message(Registration.gender)
+async def set_gender(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('lang', 'uz')
+    gender = "male" if "Yigit" in message.text else "female"
+    await db.update_user(message.from_user.id, gender=gender)
+    await message.answer(TEXTS[lang]["select_region"], reply_markup=get_regions_kb(lang))
+    await state.set_state(Registration.region)
+
+@dp.message(Registration.region)
+async def set_region(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('lang', 'uz')
+    await db.update_user(message.from_user.id, region=message.text)
+    await message.answer(TEXTS[lang]["send_photo"], reply_markup=types.ReplyKeyboardRemove())
+    await state.set_state(Registration.photo)
+
+@dp.message(Registration.photo, F.photo)
+async def set_photo(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('lang', 'uz')
+    await db.update_user(message.from_user.id, photo=message.photo[-1].file_id)
+    await message.answer(f"✅ {TEXTS[lang]['welcome']}", reply_markup=get_main_menu(lang))
+    await state.clear()
+
+@dp.message(F.text.in_(["Qidiruv 🔍", "Поиск 🔍", "Search 🔍"]))
+async def search_menu(message: types.Message):
+    user = await db.get_user(message.from_user.id)
+    lang = user.get('lang', 'uz')
+    await message.answer(TEXTS[lang]["search"], reply_markup=get_search_menu_kb(lang))
+
+@dp.message(F.text.in_(["Yigit topish 🧒", "Найти парня 🧒", "Find a boy 🧒", "Qiz topish 🧕", "Найти девушку 🧕", "Find a girl 🧕", "Keyingisi ⏭", "Следующий ⏭", "Next ⏭"]))
+async def find_partner(message: types.Message, state: FSMContext):
+    user = await db.get_user(message.from_user.id)
+    lang = user.get('lang', 'uz')
+    data = await state.get_data()
+    
+    if "Keyingisi" in message.text or "Следующий" in message.text or "Next" in message.text:
+        gender = data.get('search_gender')
+    else:
+        gender = "male" if ("Yigit" in message.text or "парня" in message.text or "boy" in message.text) else "female"
+        await state.update_data(search_gender=gender)
+    
+    if not gender: return await message.answer(TEXTS[lang]["search"], reply_markup=get_search_menu_kb(lang))
+
+    users = await db.get_random_users(gender)
+    if not users: return await message.answer(TEXTS[lang]["no_one"], reply_markup=get_search_menu_kb(lang))
+    
+    partner = random.choice(users)
+    await state.update_data(target_id=partner['user_id'], is_fake=partner.get('is_fake', 0))
+    caption = f"👤 {partner['full_name']} {PREMIUM_MARK}, {partner['age']}\n📍 {partner['region']}"
+    if partner.get('photo'): await message.answer_photo(partner['photo'], caption=caption, reply_markup=get_chat_kb(lang))
+    else: await message.answer(caption, reply_markup=get_chat_kb(lang))
+    await state.set_state(SearchState.browsing)
+
+@dp.message(F.text.in_(["Profilim 👤", "Мой профиль 👤", "My profile 👤"]))
+async def my_profile(message: types.Message):
+    user = await db.get_user(message.from_user.id)
+    lang = user.get('lang', 'uz')
+    gender_text = "Yigit 🧒" if user.get('gender') == "male" else "Qiz 🧕"
+    caption = f"👤 {user.get('full_name')} {PREMIUM_MARK}\n🔢 {user.get('age')}\n📍 {user.get('region')}\n🚻 {gender_text}"
+    if user.get('photo'): await message.answer_photo(user['photo'], caption=caption, reply_markup=get_profile_kb(lang))
+    else: await message.answer(caption, reply_markup=get_profile_kb(lang))
+
+@dp.message(F.text.in_(["Sozlamalar ⚙️", "Настройки ⚙️", "Settings ⚙️"]))
+async def settings_menu(message: types.Message, state: FSMContext):
+    user = await db.get_user(message.from_user.id)
+    lang = user.get('lang', 'uz')
+    await message.answer(TEXTS[lang]["settings"], reply_markup=get_edit_fields_kb(lang))
+    await state.set_state(EditProfile.choosing_field)
+
+@dp.message(F.text.in_(["Orqaga ⬅️", "Назад ⬅️", "Back ⬅️"]))
+async def go_back(message: types.Message, state: FSMContext):
+    user = await db.get_user(message.from_user.id)
+    lang = user.get('lang', 'uz')
+    await state.clear()
+    await message.answer(TEXTS[lang]["main_menu"], reply_markup=get_main_menu(lang))
+
+# Render veb-server
 async def handle(request): return web.Response(text="Bot is running!")
 async def main():
-    try:
-        await db.client.admin.command('ping')
-        logging.info("MongoDB-ga muvaffaqiyatli ulanildi! ✅")
-    except Exception as e:
-        logging.error(f"MongoDB ulanishida xatolik: {e} ❌")
-        return
     app = web.Application()
     app.router.add_get('/', handle)
     runner = web.AppRunner(app)
