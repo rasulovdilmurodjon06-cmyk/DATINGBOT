@@ -2,254 +2,779 @@ import asyncio
 import logging
 import random
 import os
-from aiogram import Bot, Dispatcher, types, F
+
+from aiohttp import web
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiohttp import web
+
 from utils.db import Database
 import config
 
-# MongoDB ulanish kodi
-MONGO_URI = "mongodb+srv://Dimajon:DD1559831DD@cluster0.dty9eag.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+# =========================
+# CONFIG
+# =========================
 
 logging.basicConfig(level=logging.INFO)
+
 bot = Bot(token=config.API_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
-db = Database(MONGO_URI)
 
-# Holatlar
+# config.py ichida bo'lishi kerak
+# API_TOKEN = "TOKEN"
+# MONGO_URI = "mongodb+srv://..."
+
+db = Database(config.MONGO_URI="mongodb+srv://Dimajon:DD1559831DD@cluster0.dty9eag.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+
+# =========================
+# STATES
+# =========================
+
 class Registration(StatesGroup):
-    language, name, age, gender, region, photo = State(), State(), State(), State(), State(), State()
+    language = State()
+    name = State()
+    age = State()
+    gender = State()
+    region = State()
+    photo = State()
 
 class EditProfile(StatesGroup):
-    choosing_field, updating_value = State(), State()
+    choosing_field = State()
+    updating_value = State()
 
 class SearchState(StatesGroup):
-    browsing, chatting = State(), State()
+    browsing = State()
+    chatting = State()
 
-# --- Klaviaturalar ---
+# =========================
+# KEYBOARDS
+# =========================
+
 def get_main_menu():
-    kb = [[types.KeyboardButton(text="Qidiruv 🔍"), types.KeyboardButton(text="Profilim 👤")],
-          [types.KeyboardButton(text="Sozlamalar ⚙️")]]
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    kb = [
+        [
+            KeyboardButton(text="Qidiruv 🔍"),
+            KeyboardButton(text="Profilim 👤")
+        ],
+        [
+            KeyboardButton(text="Sozlamalar ⚙️")
+        ]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_profile_kb():
-    kb = [[types.KeyboardButton(text="Profilni tahrirlash 📝")], [types.KeyboardButton(text="Orqaga ⬅️")]]
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    kb = [
+        [KeyboardButton(text="Profilni tahrirlash 📝")],
+        [KeyboardButton(text="Orqaga ⬅️")]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_edit_fields_kb():
-    kb = [[types.KeyboardButton(text="Ismni o'zgartirish"), types.KeyboardButton(text="Yoshni o'zgartirish")],
-          [types.KeyboardButton(text="Viloyatni o'zgartirish"), types.KeyboardButton(text="Rasmni o'zgartirish")],
-          [types.KeyboardButton(text="Orqaga ⬅️")]]
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    kb = [
+        [
+            KeyboardButton(text="Ismni o'zgartirish"),
+            KeyboardButton(text="Yoshni o'zgartirish")
+        ],
+        [
+            KeyboardButton(text="Viloyatni o'zgartirish"),
+            KeyboardButton(text="Rasmni o'zgartirish")
+        ],
+        [
+            KeyboardButton(text="Orqaga ⬅️")
+        ]
+    ]
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_regions_kb():
-    buttons = [types.KeyboardButton(text=r) for r in config.REGIONS]
+    buttons = [KeyboardButton(text=r) for r in config.REGIONS]
+
     kb = [buttons[i:i + 2] for i in range(0, len(buttons), 2)]
-    kb.append([types.KeyboardButton(text="Orqaga ⬅️")])
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+    kb.append([KeyboardButton(text="Orqaga ⬅️")])
+
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+
+def get_search_kb():
+    kb = [
+        [
+            KeyboardButton(text="Yigit topish 🧒"),
+            KeyboardButton(text="Qiz topish 🧕")
+        ],
+        [
+            KeyboardButton(text="Orqaga ⬅️")
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_chat_kb():
-    kb = [[types.KeyboardButton(text="Xabar yuborish ✉️"), types.KeyboardButton(text="Keyingisi ⏭")],
-          [types.KeyboardButton(text="Orqaga ⬅️")]]
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    kb = [
+        [
+            KeyboardButton(text="Xabar yuborish ✉️"),
+            KeyboardButton(text="Keyingisi ⏭")
+        ],
+        [
+            KeyboardButton(text="Orqaga ⬅️")
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_active_chat_kb():
-    kb = [[types.KeyboardButton(text="Suhbatni yakunlash ❌")]]
-    return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    kb = [
+        [
+            KeyboardButton(text="Suhbatni yakunlash ❌")
+        ]
+    ]
+
+    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
 def get_reply_button(target_id):
     builder = InlineKeyboardBuilder()
-    builder.button(text="Javob berish ✍️", callback_data=f"reply_{target_id}")
+
+    builder.button(
+        text="Javob berish ✍️",
+        callback_data=f"reply_{target_id}"
+    )
+
     return builder.as_markup()
 
-# --- Handlerlar ---
+# =========================
+# START
+# =========================
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
+
     user = await db.get_user(message.from_user.id)
+
     if not user:
-        kb = [[types.KeyboardButton(text="O'zbekcha 🇺🇿"), types.KeyboardButton(text="English 🇺🇸")]]
-        await message.answer("Assalomu alaykum! Botga xush kelibsiz. Tilni tanlang:", 
-                           reply_markup=types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True))
+
+        kb = [
+            [
+                KeyboardButton(text="O'zbekcha 🇺🇿"),
+                KeyboardButton(text="English 🇺🇸")
+            ]
+        ]
+
+        await message.answer(
+            "Assalomu alaykum!\nBotga xush kelibsiz.\nTilni tanlang:",
+            reply_markup=ReplyKeyboardMarkup(
+                keyboard=kb,
+                resize_keyboard=True
+            )
+        )
+
         await state.set_state(Registration.language)
+
     else:
-        await message.answer("Xush kelibsiz!", reply_markup=get_main_menu())
+        await message.answer(
+            "Xush kelibsiz!",
+            reply_markup=get_main_menu()
+        )
+
+# =========================
+# BACK
+# =========================
 
 @dp.message(F.text == "Orqaga ⬅️")
 async def go_back(message: types.Message, state: FSMContext):
+
     await state.clear()
-    await message.answer("Asosiy menyu:", reply_markup=get_main_menu())
+
+    await message.answer(
+        "Asosiy menyu:",
+        reply_markup=get_main_menu()
+    )
+
+# =========================
+# END CHAT
+# =========================
 
 @dp.message(F.text == "Suhbatni yakunlash ❌")
 async def end_chat(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    target_id = data.get('target_id')
-    if target_id:
-        try: await bot.send_message(target_id, "Suhbatdosh suhbatni yakunladi. ❌", reply_markup=get_main_menu())
-        except: pass
-    await state.clear()
-    await message.answer("Suhbat yakunlandi.", reply_markup=get_main_menu())
 
-# --- Ro'yxatdan o'tish ---
+    data = await state.get_data()
+
+    target_id = data.get("target_id")
+
+    if target_id:
+        try:
+            await bot.send_message(
+                target_id,
+                "Suhbatdosh suhbatni yakunladi ❌",
+                reply_markup=get_main_menu()
+            )
+
+        except Exception as e:
+            logging.error(e)
+
+    await state.clear()
+
+    await message.answer(
+        "Suhbat yakunlandi.",
+        reply_markup=get_main_menu()
+    )
+
+# =========================
+# REGISTRATION
+# =========================
+
 @dp.message(Registration.language)
 async def set_lang(message: types.Message, state: FSMContext):
+
     lang = "uz" if "O'zbekcha" in message.text else "en"
-    await db.add_user(message.from_user.id, message.from_user.username, lang)
+
+    await db.add_user(
+        message.from_user.id,
+        message.from_user.username,
+        lang
+    )
+
     await message.answer("Ismingizni kiriting:")
+
     await state.set_state(Registration.name)
 
 @dp.message(Registration.name)
 async def set_name(message: types.Message, state: FSMContext):
-    await db.update_user(message.from_user.id, full_name=message.text)
+
+    await db.update_user(
+        message.from_user.id,
+        full_name=message.text
+    )
+
     await message.answer("Yoshingizni kiriting:")
+
     await state.set_state(Registration.age)
 
 @dp.message(Registration.age)
 async def set_age(message: types.Message, state: FSMContext):
-    if not message.text.isdigit(): return await message.answer("Faqat raqam kiriting:")
-    await db.update_user(message.from_user.id, age=int(message.text))
-    kb = [[types.KeyboardButton(text="Yigit 🧒"), types.KeyboardButton(text="Qiz 🧕")]]
-    await message.answer("Jinsingizni tanlang:", reply_markup=types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True))
+
+    if not message.text.isdigit() or not 10 <= int(message.text) <= 80:
+        return await message.answer(
+            "Yoshni to'g'ri kiriting:"
+        )
+
+    await db.update_user(
+        message.from_user.id,
+        age=int(message.text)
+    )
+
+    kb = [
+        [
+            KeyboardButton(text="Yigit 🧒"),
+            KeyboardButton(text="Qiz 🧕")
+        ]
+    ]
+
+    await message.answer(
+        "Jinsingizni tanlang:",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=kb,
+            resize_keyboard=True
+        )
+    )
+
     await state.set_state(Registration.gender)
 
 @dp.message(Registration.gender)
 async def set_gender(message: types.Message, state: FSMContext):
+
     gender = "male" if "Yigit" in message.text else "female"
-    await db.update_user(message.from_user.id, gender=gender)
-    await message.answer("Viloyatingizni tanlang:", reply_markup=get_regions_kb())
+
+    await db.update_user(
+        message.from_user.id,
+        gender=gender
+    )
+
+    await message.answer(
+        "Viloyatingizni tanlang:",
+        reply_markup=get_regions_kb()
+    )
+
     await state.set_state(Registration.region)
 
 @dp.message(Registration.region)
 async def set_region(message: types.Message, state: FSMContext):
-    await db.update_user(message.from_user.id, region=message.text)
-    await message.answer("Profilingiz uchun rasm yuboring:", reply_markup=types.ReplyKeyboardRemove())
+
+    if message.text == "Orqaga ⬅️":
+        return await go_back(message, state)
+
+    await db.update_user(
+        message.from_user.id,
+        region=message.text
+    )
+
+    await message.answer(
+        "Profil rasmingizni yuboring 📸",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
     await state.set_state(Registration.photo)
 
 @dp.message(Registration.photo, F.photo)
 async def set_photo(message: types.Message, state: FSMContext):
-    await db.update_user(message.from_user.id, photo=message.photo[-1].file_id)
-    await message.answer("Ro'yxatdan o'tish yakunlandi! ✅", reply_markup=get_main_menu())
+
+    await db.update_user(
+        message.from_user.id,
+        photo=message.photo[-1].file_id
+    )
+
+    await message.answer(
+        "Ro'yxatdan o'tish tugadi ✅",
+        reply_markup=get_main_menu()
+    )
+
     await state.clear()
 
-# --- Profil va Sozlamalar ---
+@dp.message(Registration.photo)
+async def photo_required(message: types.Message):
+
+    await message.answer(
+        "Iltimos rasm yuboring 📸"
+    )
+
+# =========================
+# PROFILE
+# =========================
+
 @dp.message(F.text == "Profilim 👤")
 async def my_profile(message: types.Message):
+
     user = await db.get_user(message.from_user.id)
-    if not user: return await message.answer("Profil topilmadi. /start bosing.")
-    caption = f"👤 Ism: {user.get('full_name', 'Kiritilmagan')}\n🔢 Yosh: {user.get('age', 'Kiritilmagan')}\n📍 Viloyat: {user.get('region', 'Kiritilmagan')}"
-    if user.get('photo'): await message.answer_photo(user['photo'], caption=caption, reply_markup=get_profile_kb())
-    else: await message.answer(caption, reply_markup=get_profile_kb())
+
+    if not user:
+        return await message.answer(
+            "Profil topilmadi.\n/start bosing."
+        )
+
+    caption = (
+        f"👤 Ism: {user.get('full_name', 'Kiritilmagan')}\n"
+        f"🔢 Yosh: {user.get('age', 'Kiritilmagan')}\n"
+        f"📍 Viloyat: {user.get('region', 'Kiritilmagan')}"
+    )
+
+    if user.get("photo"):
+
+        await message.answer_photo(
+            user["photo"],
+            caption=caption,
+            reply_markup=get_profile_kb()
+        )
+
+    else:
+
+        await message.answer(
+            caption,
+            reply_markup=get_profile_kb()
+        )
+
+# =========================
+# SETTINGS
+# =========================
 
 @dp.message(F.text == "Sozlamalar ⚙️")
 async def settings_menu(message: types.Message):
-    await message.answer("Sozlamalar bo'limi:", reply_markup=get_profile_kb())
+
+    await message.answer(
+        "Sozlamalar:",
+        reply_markup=get_profile_kb()
+    )
+
+# =========================
+# EDIT PROFILE
+# =========================
 
 @dp.message(F.text == "Profilni tahrirlash 📝")
 async def edit_profile(message: types.Message, state: FSMContext):
-    await message.answer("Nimani o'zgartiramiz?", reply_markup=get_edit_fields_kb())
+
+    await message.answer(
+        "Nimani o'zgartiramiz?",
+        reply_markup=get_edit_fields_kb()
+    )
+
     await state.set_state(EditProfile.choosing_field)
 
 @dp.message(EditProfile.choosing_field)
 async def choose_field(message: types.Message, state: FSMContext):
+
     if "Ism" in message.text:
-        await message.answer("Yangi ismni kiriting:")
+
+        await message.answer("Yangi ism:")
+
         await state.update_data(field="full_name")
+
     elif "Yosh" in message.text:
-        await message.answer("Yangi yoshni kiriting:")
+
+        await message.answer("Yangi yosh:")
+
         await state.update_data(field="age")
+
     elif "Viloyat" in message.text:
-        await message.answer("Yangi viloyatni tanlang:", reply_markup=get_regions_kb())
+
+        await message.answer(
+            "Yangi viloyat:",
+            reply_markup=get_regions_kb()
+        )
+
         await state.update_data(field="region")
+
     elif "Rasm" in message.text:
+
         await message.answer("Yangi rasm yuboring:")
+
         await state.update_data(field="photo")
-    elif "Orqaga" in message.text: return await go_back(message, state)
-    else: return
+
+    elif "Orqaga" in message.text:
+
+        return await go_back(message, state)
+
+    else:
+        return
+
     await state.set_state(EditProfile.updating_value)
 
 @dp.message(EditProfile.updating_value)
 async def update_value(message: types.Message, state: FSMContext):
+
     data = await state.get_data()
-    field = data['field']
-    val = message.photo[-1].file_id if field == "photo" and message.photo else message.text
-    await db.update_user(message.from_user.id, **{field: val})
-    await message.answer("O'zgartirildi! ✅", reply_markup=get_main_menu())
+
+    field = data["field"]
+
+    if field == "photo":
+
+        if not message.photo:
+            return await message.answer(
+                "Rasm yuboring 📸"
+            )
+
+        value = message.photo[-1].file_id
+
+    else:
+
+        value = message.text
+
+    await db.update_user(
+        message.from_user.id,
+        **{field: value}
+    )
+
+    await message.answer(
+        "O'zgartirildi ✅",
+        reply_markup=get_main_menu()
+    )
+
     await state.clear()
 
-# --- Qidiruv va Chat ---
+# =========================
+# SEARCH
+# =========================
+
 @dp.message(F.text == "Qidiruv 🔍")
 async def search_menu(message: types.Message):
-    await message.answer("Kimni qidiramiz?", reply_markup=get_search_kb())
+
+    await message.answer(
+        "Kimni qidiramiz?",
+        reply_markup=get_search_kb()
+    )
 
 @dp.message(F.text.in_(["Yigit topish 🧒", "Qiz topish 🧕"]))
 async def find_partner(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    gender = data.get('search_gender') if "Keyingisi" in message.text else ("male" if "Yigit" in message.text else "female")
+
+    gender = (
+        "male"
+        if "Yigit" in message.text
+        else "female"
+    )
+
     await state.update_data(search_gender=gender)
-    users = await db.get_random_users(gender)
-    if not users: return await message.answer("Hozircha hech kim topilmadi.")
+
+    users = await db.get_random_users(
+        gender,
+        exclude_id=message.from_user.id
+    )
+
+    if not users:
+        return await message.answer(
+            "Hozircha hech kim topilmadi 😔"
+        )
+
     user = random.choice(users)
-    await state.update_data(target_id=user['user_id'], is_fake=user.get('is_fake', 0))
-    caption = f"👤 {user['full_name']}, {user['age']} yosh\n📍 {user['region']}"
-    if user.get('photo'): await message.answer_photo(user['photo'], caption=caption, reply_markup=get_chat_kb())
-    else: await message.answer(caption, reply_markup=get_chat_kb())
+
+    await state.update_data(
+        target_id=user["user_id"],
+        is_fake=user.get("is_fake", 0)
+    )
+
+    caption = (
+        f"👤 {user['full_name']}, "
+        f"{user['age']} yosh\n"
+        f"📍 {user['region']}"
+    )
+
+    if user.get("photo"):
+
+        await message.answer_photo(
+            user["photo"],
+            caption=caption,
+            reply_markup=get_chat_kb()
+        )
+
+    else:
+
+        await message.answer(
+            caption,
+            reply_markup=get_chat_kb()
+        )
+
     await state.set_state(SearchState.browsing)
+
+# =========================
+# BROWSING
+# =========================
 
 @dp.message(SearchState.browsing)
 async def browsing(message: types.Message, state: FSMContext):
-    if message.text == "Keyingisi ⏭": await find_partner(message, state)
+
+    if message.text == "Keyingisi ⏭":
+
+        data = await state.get_data()
+
+        gender = data.get("search_gender")
+
+        users = await db.get_random_users(
+            gender,
+            exclude_id=message.from_user.id
+        )
+
+        if not users:
+            return await message.answer(
+                "Boshqa odam topilmadi."
+            )
+
+        user = random.choice(users)
+
+        await state.update_data(
+            target_id=user["user_id"],
+            is_fake=user.get("is_fake", 0)
+        )
+
+        caption = (
+            f"👤 {user['full_name']}, "
+            f"{user['age']} yosh\n"
+            f"📍 {user['region']}"
+        )
+
+        if user.get("photo"):
+
+            await message.answer_photo(
+                user["photo"],
+                caption=caption,
+                reply_markup=get_chat_kb()
+            )
+
+        else:
+
+            await message.answer(
+                caption,
+                reply_markup=get_chat_kb()
+            )
+
     elif message.text == "Xabar yuborish ✉️":
-        await message.answer("Xabaringizni yozing:", reply_markup=get_active_chat_kb())
+
+        await message.answer(
+            "Xabaringizni yozing:",
+            reply_markup=get_active_chat_kb()
+        )
+
         await state.set_state(SearchState.chatting)
-    elif message.text == "Orqaga ⬅️": await go_back(message, state)
+
+    elif message.text == "Orqaga ⬅️":
+
+        await go_back(message, state)
+
+# =========================
+# CHAT
+# =========================
 
 @dp.message(SearchState.chatting)
 async def chatting_handler(message: types.Message, state: FSMContext):
-    if message.text == "Suhbatni yakunlash ❌": return await end_chat(message, state)
-    if message.text and any(x in message.text.lower() for x in ['t.me', 'http', '@']):
-        await message.delete()
-        return await message.answer("Link taqiqlangan! 🚫")
-    data = await state.get_data()
-    target_id = data.get('target_id')
-    if data.get('is_fake'):
-        await asyncio.sleep(1)
-        await message.answer(f"Javob: {random.choice(['Salom!', 'Qayerdansiz?', 'Tanishganimdan xursandman 😊'])}")
-    else:
+
+    if message.text == "Suhbatni yakunlash ❌":
+        return await end_chat(message, state)
+
+    banned = [
+        "t.me",
+        "http",
+        "https",
+        "@",
+        ".com",
+        ".uz"
+    ]
+
+    if message.text and any(x in message.text.lower() for x in banned):
+
         try:
-            sender = await db.get_user(message.from_user.id)
-            await bot.send_message(target_id, f"👤 <b>{sender['full_name']}</b>:\n\"{message.text}\"", 
-                                 reply_markup=get_reply_button(message.from_user.id), parse_mode="HTML")
-        except: await message.answer("Xabar yuborilmadi. ❌")
+            await message.delete()
+        except:
+            pass
+
+        return await message.answer(
+            "Link yuborish taqiqlangan 🚫"
+        )
+
+    data = await state.get_data()
+
+    target_id = data.get("target_id")
+
+    if not target_id:
+        return await message.answer(
+            "Foydalanuvchi topilmadi."
+        )
+
+    # Fake user
+    if data.get("is_fake"):
+
+        await asyncio.sleep(1)
+
+        answers = [
+            "Salom 😊",
+            "Qayerdansiz?",
+            "Tanishganimdan xursandman",
+            "Nima qilyapsiz?",
+            "Yoshingiz nechida?"
+        ]
+
+        return await message.answer(
+            random.choice(answers)
+        )
+
+    # Real user
+    try:
+
+        sender = await db.get_user(message.from_user.id)
+
+        sender_name = sender.get("full_name", "Anonim")
+
+        await bot.send_message(
+            target_id,
+            f"👤 <b>{sender_name}</b>\n\n{message.text}",
+            parse_mode="HTML",
+            reply_markup=get_reply_button(
+                message.from_user.id
+            )
+        )
+
+    except Exception as e:
+
+        logging.error(e)
+
+        await message.answer(
+            "Xabar yuborilmadi ❌"
+        )
+
+# =========================
+# REPLY
+# =========================
 
 @dp.callback_query(F.data.startswith("reply_"))
-async def reply_callback(callback: types.CallbackQuery, state: FSMContext):
-    target_id = int(callback.data.split("_")[1])
+async def reply_callback(
+    callback: types.CallbackQuery,
+    state: FSMContext
+):
+
+    target_id = int(
+        callback.data.split("_")[1]
+    )
+
     sender = await db.get_user(target_id)
-    await callback.message.answer(f"👤 <b>{sender['full_name']}</b> bilan suhbat boshlandi:", 
-                                reply_markup=get_active_chat_kb(), parse_mode="HTML")
-    await state.update_data(target_id=target_id)
-    await state.set_state(SearchState.chatting)
+
+    if not sender:
+        return await callback.answer(
+            "Foydalanuvchi topilmadi"
+        )
+
+    await callback.message.answer(
+        f"👤 <b>{sender['full_name']}</b> bilan suhbat boshlandi",
+        parse_mode="HTML",
+        reply_markup=get_active_chat_kb()
+    )
+
+    await state.update_data(
+        target_id=target_id
+    )
+
+    await state.set_state(
+        SearchState.chatting
+    )
+
     await callback.answer()
 
-# Render veb-server
-async def handle(request): return web.Response(text="Bot is running!")
+# =========================
+# WEB SERVER
+# =========================
+
+async def handle(request):
+
+    return web.Response(
+        text="Bot is running!"
+    )
+
+# =========================
+# MAIN
+# =========================
+
 async def main():
+
     try:
-        await db.client.admin.command('ping')
-        logging.info("MongoDB-ga muvaffaqiyatli ulanildi! ✅")
+
+        await db.client.admin.command("ping")
+
+        logging.info(
+            "MongoDB connected ✅"
+        )
+
     except Exception as e:
-        logging.error(f"MongoDB ulanishida xatolik: {e} ❌")
+
+        logging.error(
+            f"MongoDB error: {e}"
+        )
+
         return
+
     app = web.Application()
-    app.router.add_get('/', handle)
+
+    app.router.add_get("/", handle)
+
     runner = web.AppRunner(app)
+
     await runner.setup()
-    await web.TCPSite(runner, '0.0.0.0', int(os.getenv("PORT", 10000))).start()
+
+    port = int(
+        os.getenv("PORT", 10000)
+    )
+
+    site = web.TCPSite(
+        runner,
+        "0.0.0.0",
+        port
+    )
+
+    await site.start()
+
+    logging.info(
+        f"Server running on {port}"
+    )
+
     await dp.start_polling(bot)
 
-if __name__ == '__main__':
+# =========================
+# RUN
+# =========================
+
+if __name__ == "__main__":
     asyncio.run(main())
-    
