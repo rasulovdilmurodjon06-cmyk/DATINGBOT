@@ -1,107 +1,27 @@
-from motor.motor_asyncio import AsyncIOMotorClient
-from datetime import datetime
-import random
+async def get_users_count(self):
+    return await self.users.count_documents({})
 
-class Database:
+async def get_active_users_count(self):
+    return await self.users.count_documents({"is_banned": {"$ne": True}})
 
-    def __init__(self, uri):
+async def get_banned_users_count(self):
+    return await self.users.count_documents({"is_banned": True})
 
-        self.client = AsyncIOMotorClient(uri)
+async def get_all_users(self, limit=None):
+    cursor = self.users.find({})
+    if limit:
+        cursor = cursor.limit(limit)
+    return await cursor.to_list(length=limit or 10000)
 
-        self.db = self.client['dating_bot']
+async def ban_user(self, user_id: int):
+    await self.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"is_banned": True}}
+    )
 
-        self.users = self.db['users']
-
-    async def add_user(self, user_id, username, lang):
-
-        await self.users.update_one(
-
-            {'user_id': user_id},
-
-            {'$setOnInsert': {
-
-                'user_id': user_id,
-                'username': username,
-                'lang': lang,
-                'is_fake': 0,
-                'created_at': datetime.now()
-
-            }},
-
-            upsert=True
-        )
-
-    async def update_user(self, user_id, **kwargs):
-
-        await self.users.update_one(
-            {'user_id': user_id},
-            {'$set': kwargs}
-        )
-
-    async def get_user(self, user_id):
-
-        return await self.users.find_one(
-            {'user_id': user_id}
-        )
-
-    async def get_random_users(
-        self,
-        gender,
-        exclude_id=None,
-        limit=20
-    ):
-
-        query = {
-            'gender': gender
-        }
-
-        # O'zini chiqarib tashlash
-        if exclude_id:
-            query['user_id'] = {
-                '$ne': exclude_id
-            }
-
-        cursor = self.users.aggregate([
-            {
-                '$match': query
-            },
-            {
-                '$sample': {
-                    'size': limit
-                }
-            }
-        ])
-
-        return await cursor.to_list(length=limit)
-
-    async def add_fake_user(
-        self,
-        full_name,
-        age,
-        gender,
-        region,
-        city,
-        photo
-    ):
-
-        await self.users.insert_one({
-
-            'user_id': random.randint(100000, 999999),
-
-            'full_name': full_name,
-
-            'age': age,
-
-            'gender': gender,
-
-            'region': region,
-
-            'city': city,
-
-            'photo': photo,
-
-            'is_fake': 1,
-
-            'created_at': datetime.now()
-
-        })
+async def unban_user(self, user_id: int):
+    await self.users.update_one(
+        {"user_id": user_id},
+        {"$set": {"is_banned": False}}
+    )
+    
