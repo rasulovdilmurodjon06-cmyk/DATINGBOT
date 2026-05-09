@@ -28,7 +28,7 @@ dp = Dispatcher(storage=MemoryStorage())
 # API_TOKEN = "TOKEN"
 # MONGO_URI = "mongodb+srv://..."
 
-db = Database(config.MONGO_URI="mongodb+srv://Dimajon:DD1559831DD@cluster0.dty9eag.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+db = Database(config.MONGO_URI)
 
 # =========================
 # STATES
